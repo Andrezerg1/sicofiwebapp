@@ -12,6 +12,7 @@ import Transactions from "@/pages/Transactions";
 import AITransactions from "@/pages/AITransactions";
 import Spreadsheets from "@/pages/Spreadsheets";
 import Settings from "@/pages/Settings";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
               <Route path="/ai" element={<ProtectedRoute><AITransactions /></ProtectedRoute>} />

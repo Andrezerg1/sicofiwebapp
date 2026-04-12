@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import {
   LayoutDashboard, Receipt, FileSpreadsheet, Bot,
-  Settings, LogOut, Sun, Moon, TrendingUp, ChevronLeft, ChevronRight
+  Settings, LogOut, Sun, Moon, DollarSign, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -30,9 +30,9 @@ export default function AppSidebar() {
     )}>
       <div className="p-4 flex items-center gap-2">
         <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shrink-0">
-          <TrendingUp className="h-4 w-4 text-primary-foreground" />
+          <DollarSign className="h-4 w-4 text-primary-foreground" />
         </div>
-        {!collapsed && <span className="font-bold text-lg font-['Space_Grotesk']">FinançaAI</span>}
+        {!collapsed && <span className="font-bold text-lg font-['Space_Grotesk']">SICOFI</span>}
         <Button
           variant="ghost"
           size="icon"
