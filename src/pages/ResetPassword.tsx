@@ -1,34 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, DollarSign } from 'lucide-react';
+import { Eye, EyeOff, DollarSign, CheckCircle } from 'lucide-react';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isValid, setIsValid] = useState(false);
+  const [success, setSuccess] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, isRecovery } = useAuth();
 
-  useEffect(() => {
-    // Check if we have a recovery token in the URL
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      setIsValid(true);
-    } else {
-      // Also check for access_token which indicates a valid session from the recovery link
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setIsValid(true);
-      });
-    }
-  }, []);
+  const canReset = !!user || isRecovery;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,8 +36,9 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      setSuccess(true);
       toast({ title: 'Senha atualizada!', description: 'Sua senha foi redefinida com sucesso.' });
-      navigate('/');
+      setTimeout(() => navigate('/'), 2000);
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } finally {
@@ -54,13 +46,28 @@ export default function ResetPassword() {
     }
   };
 
-  if (!isValid) {
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="glass w-full max-w-md">
+          <CardContent className="p-6 text-center space-y-4">
+            <CheckCircle className="h-12 w-12 mx-auto text-primary" />
+            <h2 className="text-xl font-bold">Senha redefinida!</h2>
+            <p className="text-muted-foreground">Redirecionando para o dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!canReset) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="glass w-full max-w-md">
           <CardContent className="p-6 text-center space-y-4">
             <DollarSign className="h-12 w-12 mx-auto text-primary" />
-            <p className="text-muted-foreground">Link de recuperação inválido ou expirado.</p>
+            <h2 className="text-xl font-bold">Link inválido ou expirado</h2>
+            <p className="text-muted-foreground">O link de recuperação não é mais válido. Solicite um novo pela tela de login.</p>
             <Button onClick={() => navigate('/auth')} className="gradient-primary">Voltar ao login</Button>
           </CardContent>
         </Card>
