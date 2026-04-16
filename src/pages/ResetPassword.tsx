@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, DollarSign, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, DollarSign, CheckCircle, LoaderCircle } from 'lucide-react';
+
+type RecoveryStatus = 'checking' | 'ready' | 'invalid';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -15,11 +16,99 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus>('checking');
+  const [statusMessage, setStatusMessage] = useState('Validando seu link de recuperação...');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, isRecovery } = useAuth();
 
-  const canReset = !!user || isRecovery;
+  useEffect(() => {
+    let isMounted = true;
+
+    const validateRecoveryLink = async () => {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
+
+        if (errorDescription) {
+          throw new Error(decodeURIComponent(errorDescription));
+        }
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session?.user) {
+          if (!isMounted) return;
+          setRecoveryStatus('ready');
+          setStatusMessage('Agora é só definir sua nova senha.');
+          return;
+        }
+
+        const tokenHash = searchParams.get('token_hash');
+        const type = searchParams.get('type');
+        const code = searchParams.get('code');
+
+        if (tokenHash && type === 'recovery') {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+
+          if (error) throw error;
+
+          window.history.replaceState({}, document.title, '/reset-password');
+
+          if (!isMounted) return;
+          setRecoveryStatus('ready');
+          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          return;
+        }
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+
+          window.history.replaceState({}, document.title, '/reset-password');
+
+          if (!isMounted) return;
+          setRecoveryStatus('ready');
+          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          return;
+        }
+
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const hashType = hashParams.get('type');
+
+        if (accessToken && refreshToken && hashType === 'recovery') {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) throw error;
+
+          window.history.replaceState({}, document.title, '/reset-password');
+
+          if (!isMounted) return;
+          setRecoveryStatus('ready');
+          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          return;
+        }
+
+        throw new Error('O link de recuperação é inválido ou expirou. Solicite um novo email.');
+      } catch (error: any) {
+        if (!isMounted) return;
+        const message = error.message || 'Não foi possível validar o link de recuperação.';
+        setRecoveryStatus('invalid');
+        setStatusMessage(message);
+      }
+    };
+
+    validateRecoveryLink();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,14 +149,28 @@ export default function ResetPassword() {
     );
   }
 
-  if (!canReset) {
+  if (recoveryStatus === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="glass w-full max-w-md">
+          <CardContent className="p-6 text-center space-y-4">
+            <LoaderCircle className="h-12 w-12 mx-auto text-primary animate-spin" />
+            <h2 className="text-xl font-bold">Validando acesso</h2>
+            <p className="text-muted-foreground">{statusMessage}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (recoveryStatus === 'invalid') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="glass w-full max-w-md">
           <CardContent className="p-6 text-center space-y-4">
             <DollarSign className="h-12 w-12 mx-auto text-primary" />
             <h2 className="text-xl font-bold">Link inválido ou expirado</h2>
-            <p className="text-muted-foreground">O link de recuperação não é mais válido. Solicite um novo pela tela de login.</p>
+            <p className="text-muted-foreground">{statusMessage}</p>
             <Button onClick={() => navigate('/auth')} className="gradient-primary">Voltar ao login</Button>
           </CardContent>
         </Card>
@@ -88,7 +191,7 @@ export default function ResetPassword() {
         <Card className="glass">
           <CardHeader>
             <CardTitle>Redefinir senha</CardTitle>
-            <CardDescription>Digite sua nova senha abaixo</CardDescription>
+            <CardDescription>{statusMessage}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
