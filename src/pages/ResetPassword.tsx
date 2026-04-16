@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +21,19 @@ export default function ResetPassword() {
   const [statusMessage, setStatusMessage] = useState('Validando seu link de recuperação...');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, isRecovery, loading: authLoading } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
 
     const validateRecoveryLink = async () => {
       try {
+        const markReady = (message = 'Link validado. Defina sua nova senha abaixo.') => {
+          if (!isMounted) return;
+          setRecoveryStatus('ready');
+          setStatusMessage(message);
+        };
+
         const searchParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
         const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
@@ -34,11 +42,22 @@ export default function ResetPassword() {
           throw new Error(decodeURIComponent(errorDescription));
         }
 
+        if (user || isRecovery) {
+          markReady('Agora é só definir sua nova senha.');
+          return;
+        }
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+          if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session?.user && isMounted) {
+            setRecoveryStatus('ready');
+            setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          }
+        });
+
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session?.user) {
-          if (!isMounted) return;
-          setRecoveryStatus('ready');
-          setStatusMessage('Agora é só definir sua nova senha.');
+          authListener.subscription.unsubscribe();
+          markReady('Agora é só definir sua nova senha.');
           return;
         }
 
@@ -54,11 +73,9 @@ export default function ResetPassword() {
 
           if (error) throw error;
 
-          window.history.replaceState({}, document.title, '/reset-password');
-
-          if (!isMounted) return;
-          setRecoveryStatus('ready');
-          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          authListener.subscription.unsubscribe();
+          markReady();
           return;
         }
 
@@ -66,11 +83,9 @@ export default function ResetPassword() {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
 
-          window.history.replaceState({}, document.title, '/reset-password');
-
-          if (!isMounted) return;
-          setRecoveryStatus('ready');
-          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          authListener.subscription.unsubscribe();
+          markReady();
           return;
         }
 
@@ -86,11 +101,19 @@ export default function ResetPassword() {
 
           if (error) throw error;
 
-          window.history.replaceState({}, document.title, '/reset-password');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          authListener.subscription.unsubscribe();
+          markReady();
+          return;
+        }
 
-          if (!isMounted) return;
-          setRecoveryStatus('ready');
-          setStatusMessage('Link validado. Defina sua nova senha abaixo.');
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+
+        const { data: delayedSession } = await supabase.auth.getSession();
+        authListener.subscription.unsubscribe();
+
+        if (delayedSession.session?.user || isRecovery) {
+          markReady('Agora é só definir sua nova senha.');
           return;
         }
 
@@ -108,7 +131,14 @@ export default function ResetPassword() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isRecovery, user]);
+
+  useEffect(() => {
+    if (!authLoading && (user || isRecovery)) {
+      setRecoveryStatus('ready');
+      setStatusMessage('Agora é só definir sua nova senha.');
+    }
+  }, [authLoading, isRecovery, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
