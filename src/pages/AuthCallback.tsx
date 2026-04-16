@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmailOtpType } from '@supabase/supabase-js';
-import { LoaderCircle, MailCheck, RefreshCcwKey } from 'lucide-react';
+import { LoaderCircle, MailCheck, RefreshCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -102,7 +102,7 @@ export default function AuthCallback() {
     ) : state === 'success' ? (
       <MailCheck className="h-12 w-12 text-primary" />
     ) : (
-      <RefreshCcwKey className="h-12 w-12 text-primary" />
+      <RefreshCcw className="h-12 w-12 text-primary" />
     );
 
   const title =
