@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth-context';
+import { getDemoTransactions } from '@/lib/demo-data';
 import { formatCurrency, formatMonth } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp } from 'lucide-react';
@@ -21,12 +22,17 @@ interface Transaction {
 
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f97316', '#ec4899', '#14b8a6', '#eab308', '#8b5cf6', '#ef4444'];
 
-export default function Dashboard() {
+export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (demo) {
+      setTransactions(getDemoTransactions());
+      setLoading(false);
+      return;
+    }
     if (!user) return;
     const fetchData = async () => {
       const sixMonthsAgo = subMonths(new Date(), 6);
@@ -40,7 +46,7 @@ export default function Dashboard() {
       setLoading(false);
     };
     fetchData();
-  }, [user]);
+  }, [user, demo]);
 
   const currentMonth = new Date();
   const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
