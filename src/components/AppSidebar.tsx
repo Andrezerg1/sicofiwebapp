@@ -17,7 +17,7 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ];
 
-export default function AppSidebar() {
+export default function AppSidebar({ demo = false }: { demo?: boolean }) {
   const location = useLocation();
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -33,6 +33,7 @@ export default function AppSidebar() {
           <DollarSign className="h-4 w-4 text-primary-foreground" />
         </div>
         {!collapsed && <span className="font-bold text-lg font-['Space_Grotesk']">SICOFI</span>}
+        {demo && !collapsed && <span className="text-[10px] text-muted-foreground">Demo</span>}
         <Button
           variant="ghost"
           size="icon"
@@ -69,13 +70,13 @@ export default function AppSidebar() {
           {theme === 'dark' ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
           {!collapsed && <span>{theme === 'dark' ? 'Modo claro' : 'Modo escuro'}</span>}
         </button>
-        <button
+        {!demo && <button
           onClick={signOut}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive w-full transition-colors"
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span>Sair</span>}
-        </button>
+        </button>}
       </div>
     </aside>
   );
