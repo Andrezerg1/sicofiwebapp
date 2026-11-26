@@ -15,8 +15,10 @@ import Settings from "@/pages/Settings";
 import AuthCallback from "@/pages/AuthCallback";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import { DemoTransactions, DemoSpreadsheets, DemoAI, DemoSettings } from "@/pages/Demo";
 
 const queryClient = new QueryClient();
+const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -39,6 +41,16 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
+          {demoMode ? (
+            <Routes>
+              <Route path="/" element={<AppLayout demo><Dashboard demo /></AppLayout>} />
+              <Route path="/transactions" element={<AppLayout demo><DemoTransactions /></AppLayout>} />
+              <Route path="/ai" element={<AppLayout demo><DemoAI /></AppLayout>} />
+              <Route path="/spreadsheets" element={<AppLayout demo><DemoSpreadsheets /></AppLayout>} />
+              <Route path="/settings" element={<AppLayout demo><DemoSettings /></AppLayout>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          ) : (
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
@@ -52,6 +64,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
+          )}
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
