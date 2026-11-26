@@ -26,7 +26,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # The committed lockfile predates several package.json dependency updates.
+      - run: npm install --legacy-peer-deps
       - run: npm run build
       - name: Support direct links and reloads
         run: cp dist/index.html dist/404.html
